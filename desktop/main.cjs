@@ -4,6 +4,7 @@ const { createInterface } = require('node:readline');
 const { join, resolve } = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { storedRom, importRom } = require('./rom.cjs');
+const { ASPECT, MIN_WIDTH, MAX_WIDTH, sizeForWidth, readSize, saveSize } = require('./window-size.cjs');
 
 const root = resolve(__dirname, '..');
 const smoke = !app.isPackaged && process.argv.includes('--smoke-test');
@@ -102,13 +103,23 @@ app.whenReady().then(async () => {
     return net.fetch(pathToFileURL(join(root, local)).href);
   });
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
+  const sizeFile = join(app.getPath('userData'), 'window-size.json');
   window = new BrowserWindow({
-    width: 400, height: 366,
+    ...readSize(sizeFile),
+    minWidth: MIN_WIDTH, minHeight: sizeForWidth(MIN_WIDTH).height,
+    maxWidth: MAX_WIDTH, maxHeight: sizeForWidth(MAX_WIDTH).height,
     frame: false, transparent: true, backgroundColor: '#00000000',
-    resizable: false, maximizable: false, hasShadow: false,
+    resizable: true, maximizable: false, hasShadow: false,
     title: 'DuPaGotchi', icon, autoHideMenuBar: true,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false },
   });
+  window.setAspectRatio(ASPECT);
+  const rememberSize = () => {
+    try { saveSize(sizeFile, window.getSize()[0]); }
+    catch (error) { console.error('Could not remember window size:', error.message); }
+  };
+  window.on('resize', rememberSize);
+  window.on('close', rememberSize);
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => { if (url !== 'tamogachi://app/index.html') event.preventDefault(); });
   window.webContents.on('render-process-gone', (_event, details) => { console.error(details); app.quit(); });

@@ -8,8 +8,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "start": "npm run build && node scripts/run.mjs",
-    "test": "npm run build && node --test scripts/*.test.mjs",
-    "smoke": "npm run build && node scripts/run.mjs --smoke-test",
+    "test": "npm run build && node --test scripts/check-core.mjs",
+    "smoke": "npm run build && node scripts/smoke.mjs",
     "package": "npm run build && node scripts/package.mjs"
   },
   "devDependencies": {

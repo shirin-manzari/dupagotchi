@@ -62,9 +62,10 @@ ipcMain.handle('pet:choose-rom', async event => {
 });
 
 function startCore(rom) {
-  const executable = app.isPackaged ? join(process.resourcesPath, 'tamogachi-core') : join(root, 'build/tamogachi-core');
+  const coreName = `tamogachi-core${process.platform === 'win32' ? '.exe' : ''}`;
+  const executable = app.isPackaged ? join(process.resourcesPath, coreName) : join(root, 'build', coreName);
   coreError = '';
-  core = spawn(executable, [rom, join(app.getPath('userData'), 'pet-v1.state')], { stdio: ['pipe', 'pipe', 'pipe'] });
+  core = spawn(executable, [rom, join(app.getPath('userData'), 'pet-v1.state')], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
   core.stdin.on('error', () => {});
   core.stderr.on('data', data => { coreError = `${coreError}${data}`.slice(-3000); });
   core.on('error', error => {

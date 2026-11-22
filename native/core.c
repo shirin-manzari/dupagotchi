@@ -5,7 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <io.h>
+#else
 #include <unistd.h>
+#endif
 #include "tamalib/tamalib.h"
 
 static uint32_t pixels[16];
@@ -14,17 +20,47 @@ static volatile sig_atomic_t quitting;
 static const char *save_path;
 static u12_t program[6144];
 
+#ifdef _WIN32
+/* Node passes UTF-8 paths; use the wide APIs for non-ASCII user folders. */
+static int wide_path(const char *path, wchar_t *wide) {
+    return MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, wide, 4096);
+}
+static FILE *open_file(const char *path, const char *mode) {
+    wchar_t wide[4096], wide_mode[8];
+    if (!wide_path(path, wide)) return NULL;
+    if (!MultiByteToWideChar(CP_UTF8, 0, mode, -1, wide_mode, 8)) return NULL;
+    return _wfopen(wide, wide_mode);
+}
+#define fopen open_file
+#endif
+
 static timestamp_t now_us(void) {
+#ifdef _WIN32
+    LARGE_INTEGER ticks, frequency;
+    QueryPerformanceCounter(&ticks);
+    QueryPerformanceFrequency(&frequency);
+    return (uint32_t)((ticks.QuadPart / frequency.QuadPart) * 1000000 +
+        (ticks.QuadPart % frequency.QuadPart) * 1000000 / frequency.QuadPart);
+#else
     struct timespec value;
     clock_gettime(CLOCK_MONOTONIC, &value);
     return (uint32_t)((uint64_t)value.tv_sec * 1000000 + value.tv_nsec / 1000);
+#endif
+}
+
+static void sleep_us(unsigned microseconds) {
+#ifdef _WIN32
+    Sleep((microseconds + 999) / 1000);
+#else
+    struct timespec delay = { microseconds / 1000000, (microseconds % 1000000) * 1000 };
+    nanosleep(&delay, NULL);
+#endif
 }
 
 static void sleep_until(timestamp_t deadline) {
     int32_t remaining = (int32_t)(deadline - now_us());
     if (remaining > 0) {
-        struct timespec delay = { remaining / 1000000, (remaining % 1000000) * 1000 };
-        nanosleep(&delay, NULL);
+        sleep_us((unsigned)remaining);
     }
 }
 
@@ -101,10 +137,22 @@ static int save_state(void) {
     int ok = write_word(file, 0x54414d41) && write_word(file, 1) &&
         write_word(file, (uint32_t)count) && write_word(file, checksum(words, count));
     for (size_t i = 0; ok && i < count; i++) ok = write_word(file, words[i]);
-    if (fflush(file) || fsync(fileno(file))) ok = 0;
+    if (fflush(file)) ok = 0;
+#ifdef _WIN32
+    if (_commit(_fileno(file))) ok = 0;
+#else
+    if (fsync(fileno(file))) ok = 0;
+#endif
     if (fclose(file)) ok = 0;
+#ifdef _WIN32
+    wchar_t source[4096], target[4096];
+    if (!wide_path(temporary, source) || !wide_path(save_path, target)) return 0;
+    if (ok && MoveFileExW(source, target, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return 1;
+    DeleteFileW(source);
+#else
     if (ok && rename(temporary, save_path) == 0) return 1;
     unlink(temporary);
+#endif
     return 0;
 }
 static int restore_state(void) {
@@ -139,10 +187,23 @@ static void read_commands(void) {
     static char line[128];
     static size_t length;
     char incoming[128];
-    ssize_t count;
-    while ((count = read(STDIN_FILENO, incoming, sizeof incoming)) > 0) {
-        for (ssize_t i = 0; i < count; i++) {
+    int count;
+    for (;;) {
+#ifdef _WIN32
+        HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
+        DWORD available, received;
+        if (!PeekNamedPipe(input, NULL, 0, NULL, &available, NULL)) { quitting = 1; return; }
+        if (!available) return;
+        DWORD wanted = available < sizeof incoming ? available : (DWORD)sizeof incoming;
+        if (!ReadFile(input, incoming, wanted, &received, NULL)) { quitting = 1; return; }
+        count = (int)received;
+#else
+        count = (int)read(STDIN_FILENO, incoming, sizeof incoming);
+#endif
+        if (count <= 0) break;
+        for (int i = 0; i < count; i++) {
             if (incoming[i] == '\n') { line[length] = 0; command(line); length = 0; }
+            else if (incoming[i] == '\r') continue;
             else if (length < sizeof line - 1) line[length++] = incoming[i];
         }
     }
@@ -150,7 +211,7 @@ static void read_commands(void) {
 }
 static void stop(int signal_number) { quitting = 1; }
 
-int main(int argc, char **argv) {
+static int core_main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "Usage: tamogachi-core ROM SAVE [--paused]\n"); return 2; }
     FILE *rom = fopen(argv[1], "rb");
     if (!rom) { perror("ROM"); return 2; }
@@ -161,9 +222,12 @@ int main(int argc, char **argv) {
     for (unsigned i = 0; i < 6144; i++) program[i] = (u12_t)bytes[i * 2] << 8 | bytes[i * 2 + 1];
     save_path = argv[2];
     paused = argc > 3 && !strcmp(argv[3], "--paused");
-    setvbuf(stdout, NULL, _IOLBF, 0);
-    signal(SIGTERM, stop); signal(SIGINT, stop); signal(SIGPIPE, stop);
+    setvbuf(stdout, NULL, _IONBF, 0);
+    signal(SIGTERM, stop); signal(SIGINT, stop);
+#ifndef _WIN32
+    signal(SIGPIPE, stop);
     fcntl(STDIN_FILENO, F_SETFL, fcntl(STDIN_FILENO, F_GETFL) | O_NONBLOCK);
+#endif
     hal_t hal = {
         .malloc = allocate, .free = free, .halt = halt, .is_log_enabled = logging,
         .log = log_message, .sleep_until = sleep_until, .get_timestamp = now_us,
@@ -178,7 +242,7 @@ int main(int argc, char **argv) {
     while (!quitting) {
         read_commands();
         if (!paused) tamalib_step();
-        else { struct timespec delay = {0, 2000000}; nanosleep(&delay, NULL); }
+        else sleep_us(2000);
         timestamp_t now = now_us();
         if (now - frame_time >= 33333) { emit_frame(); frame_time = now; }
         if (now - save_time >= 5000000) {
@@ -190,3 +254,22 @@ int main(int argc, char **argv) {
     tamalib_release();
     return saved ? 0 : 3;
 }
+
+#ifdef _WIN32
+int wmain(int argc, wchar_t **wide_argv) {
+    char **argv = calloc((size_t)argc + 1, sizeof *argv);
+    if (!argv) return 2;
+    for (int i = 0; i < argc; i++) {
+        int length = WideCharToMultiByte(CP_UTF8, 0, wide_argv[i], -1, NULL, 0, NULL, NULL);
+        argv[i] = malloc((size_t)length);
+        if (!length || !argv[i]) return 2;
+        WideCharToMultiByte(CP_UTF8, 0, wide_argv[i], -1, argv[i], length, NULL, NULL);
+    }
+    int result = core_main(argc, argv);
+    for (int i = 0; i < argc; i++) free(argv[i]);
+    free(argv);
+    return result;
+}
+#else
+int main(int argc, char **argv) { return core_main(argc, argv); }
+#endif

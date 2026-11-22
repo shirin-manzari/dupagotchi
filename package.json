@@ -2,6 +2,7 @@
   "name": "dupagotchi",
   "version": "0.1.0",
   "private": true,
+  "license": "GPL-2.0-only",
   "description": "Tamagotchi P1 desktop emulator",
   "main": "desktop/main.cjs",
   "scripts": {

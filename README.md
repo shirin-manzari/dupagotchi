@@ -12,9 +12,14 @@ The ROM is not included due to copyright. Click **Choose ROM** to import your ow
 
 ## Requirements
 
-- macOS
-- Node.js
-- Apple Command Line Tools
+For building and running from source:
+
+- macOS (Windows is not currently supported).
+- Node.js 22.12.0 or newer, with npm.
+- Xcode Command Line Tools, including the C compiler. Install with `xcode-select --install` if needed.
+- A supported Tamagotchi P1 ROM, imported with **Choose ROM** on first launch.
+
+The packaged macOS app only needs macOS and the ROM; Node.js, npm, and the command line tools are only needed to build from source.
 
 ## Run
 
@@ -28,7 +33,12 @@ npm start
 Build the app from source:
 
 ```sh
+npm install
 npm run package
 ```
 
 Find the app in `release/` and move it to Applications.
+
+## License
+
+The emulation core uses [TamaLIB](https://github.com/jcrona/tamalib).

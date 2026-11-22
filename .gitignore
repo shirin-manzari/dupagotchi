@@ -13,8 +13,6 @@ coverage/
 *.state.*
 *.sav
 
-# Markdown documents
-*.[mM][dD]
 
 # Tests and test artifacts
 test/

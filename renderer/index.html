@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>DuPaGotchi</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main>
+    <div class="device" title="Drag the pink body to move · Right-click for controls" aria-label="Pink Tamagotchi with three yellow buttons">
+      <img class="shell" src="assets/body.png" alt="Pink pixel-art Tamagotchi keychain" draggable="false">
+      <section class="display" aria-label="Tamagotchi LCD">
+        <div class="icons" id="icons-top"></div>
+        <canvas width="256" height="128" aria-label="Live 32 by 16 pixel ROM display"></canvas>
+        <div class="icons" id="icons-bottom"></div>
+        <div class="rom-prompt" hidden>
+          <p id="rom-message" role="status">Choose your P1 ROM to start.</p>
+          <button id="choose-rom">Choose ROM</button>
+        </div>
+        <span class="paused-overlay" hidden>PAUSED</span>
+      </section>
+      <button class="hardware button-a" data-button="A" aria-label="A — select" title="A · Select"></button>
+      <button class="hardware button-b" data-button="B" aria-label="B — confirm" title="B · Confirm"></button>
+      <button class="hardware button-c" data-button="C" aria-label="C — back" title="C · Back"></button>
+    </div>
+    <p id="status" role="status" aria-live="polite">Starting…</p>
+  </main>
+  <footer hidden aria-label="Pet controls">
+    <button id="sound" aria-pressed="false">Sound off</button>
+    <button id="pause" aria-pressed="false">Pause</button>
+    <button id="save">Save</button>
+  </footer>
+</body>
+</html>

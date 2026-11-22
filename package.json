@@ -1,0 +1,19 @@
+{
+  "name": "dupagotchi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tamagotchi P1 desktop emulator",
+  "license": "GPL-2.0-or-later",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && node scripts/run.mjs",
+    "test": "npm run build && node --test scripts/*.test.mjs",
+    "smoke": "npm run build && node scripts/run.mjs --smoke-test",
+    "package": "npm run build && node scripts/package.mjs"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "45.3.4"
+  }
+}

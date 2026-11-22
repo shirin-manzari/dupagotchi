@@ -11,15 +11,16 @@ let muted = true, paused = false, latestFrame;
 let audio, oscillator, gain;
 const activeInputs = new Map();
 
+// Recreate the original P1 shell symbols in ROM bit order.
 const symbols = [
-  ['Food', '<path d="M3 3v5c0 3 5 3 5 0V3M5.5 3v18M13 21V3c-3 3-4 7 0 9M19 3v18"/><path d="M19 3c-5 3-5 9 0 9" fill="currentColor"/>'],
-  ['Light', '<path d="M8 16c0-3-3-3-3-7a7 7 0 0 1 14 0c0 4-3 4-3 7ZM9 19h6m-5 3h4M12 1v-1M3 3 1 1m22 0-2 2M2 10H0m24 0h-2M3 17l-2 2m20-2 2 2M10 15V9l2 2 2-2v6"/>'],
-  ['Game', '<circle cx="6" cy="6" r="3.5"/><circle cx="5" cy="5" r=".65" fill="currentColor" stroke="none"/><circle cx="7" cy="7" r=".65" fill="currentColor" stroke="none"/><path d="m5 21 3 1 13-14c2-2-1-5-3-3L5 18Zm-2 2 3-3" fill="currentColor"/>'],
-  ['Medicine', '<g transform="rotate(-35 12 12)"><path d="M8 6h8v11H8ZM6 6h12M12 1v5M9 1h6M12 17v6M6 17h12m-4-8h2m-2 4h2"/></g>'],
-  ['Clean', '<path d="M4 13c-4-3-1-8 3-7l3 3c6-2 11 0 11 5 0 5-4 7-10 7-5 0-8-3-7-8ZM3 9 0 11l4 1m4 2c2 5 8 4 9 0M13 6l2-3m3 4 3-2"/><circle cx="5.5" cy="8.5" r=".8" fill="currentColor" stroke="none"/>'],
-  ['Health', '<path d="M2 7Q12-1 22 7l-4 14H6ZM5 8l2 2m2-4 1 3m4-3-1 3m6-1-2 2M12 16l3-6"/><circle cx="12" cy="16" r="1.2" fill="currentColor"/>'],
-  ['Discipline', '<path d="M13 3a9 9 0 1 0 0 18l-6-9Z" fill="currentColor" stroke="none"/><path d="m17 8 3-3m-3 7h6m-6 4 3 3"/>'],
-  ['Attention', '<path d="M13 9c-1-8-12-8-12 0s10 10 12 3c2 9 10 8 10 2s-7-9-10-5Z"/><path d="m3 10 2 2 4-2m7 5 2 1 3-2"/><circle cx="5" cy="7" r=".8" fill="currentColor" stroke="none"/><circle cx="9" cy="6" r=".8" fill="currentColor" stroke="none"/><circle cx="17" cy="11" r=".8" fill="currentColor" stroke="none"/><circle cx="20" cy="12" r=".8" fill="currentColor" stroke="none"/>'],
+  ['Food', '<path d="M3 2 2 8c0 3 2 4 3 5L4 22h4l-1-9c2-1 3-3 2-5L8 2H7v6H6V2H5v6H4V2ZM18 2c-4 3-6 8-6 13h4l-1 7h5V2Z" fill="currentColor" stroke="none"/>'],
+  ['Light', '<path d="M9 16c0-2-3-3-3-6a6 6 0 0 1 12 0c0 3-3 4-3 6Zm0 3h6m-5 3h4M12 15v-4L9 9m3 2 3-2M12 1V0M5 4 3 2M2 9H0m4 5-2 1M19 4l2-2m1 7h2m-4 5 2 1"/>'],
+  ['Game', '<circle cx="6" cy="6" r="4"/><circle cx="5" cy="5" r=".8" fill="currentColor" stroke="none"/><circle cx="7.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/><path d="m8 16 10-11c3-3 7 1 4 4L11 19Z" fill="currentColor" stroke="none"/><path d="m9 18-5 5m-2-2 4 2"/>'],
+  ['Medicine', '<g transform="rotate(58 12 12)"><path d="M8 7h8v10H8ZM6 7h12M12 2v5M8 2h8M12 17v6M6 17h12"/><path d="M9 12h6v4H9Z" fill="currentColor" stroke="none"/></g>'],
+  ['Clean', '<path d="M4 12C0 9 3 4 7 5l4 4c5-2 9-1 10 2l2-1-1 6c-1 4-5 6-11 6-6 0-9-3-8-7ZM3 9 0 11l4 1m4 2c1 5 8 5 10 0M6 3 5 1m5 3 1-2"/><circle cx="6" cy="8" r="1" fill="currentColor" stroke="none"/>'],
+  ['Health', '<path d="M2 7Q12-2 22 7l-4 14H6ZM6 8l2 3m2-6 1 4m4-3-1 4m5-2-2 3M12 17l3-5"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/>'],
+  ['Discipline', '<path d="M13 4a9 9 0 1 0 0 16L6 12Z" fill="currentColor" stroke="none"/><path d="m14 7 3 8 1-11 4 9 1-11"/>'],
+  ['Attention', '<path d="M13 12a6.5 6.5 0 1 1 1-7c1 2 1 5-1 7Zm0-1c3-5 10-3 10 3a5.5 5.5 0 0 1-10 3"/><path d="m4 9 3 2 4-2m4 5 2 2 3-2"/><path d="M5 5v1m5-1v1m6 5v1m4-1v1"/>'],
 ];
 const icons = symbols.map(([label, path], index) => {
   const node = document.createElement('span');

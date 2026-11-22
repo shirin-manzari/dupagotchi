@@ -103,7 +103,7 @@ app.whenReady().then(async () => {
   });
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   window = new BrowserWindow({
-    width: 540, height: 494,
+    width: 400, height: 366,
     frame: false, transparent: true, backgroundColor: '#00000000',
     resizable: false, maximizable: false, hasShadow: false,
     title: 'DuPaGotchi', icon, autoHideMenuBar: true,

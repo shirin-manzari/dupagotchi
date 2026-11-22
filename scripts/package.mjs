@@ -8,6 +8,6 @@ const outputs = await packager({
   ignore: [/^\/build($|\/)/, /^\/release($|\/)/, /^\/roms($|\/)/,
     /^\/native($|\/)/, /^\/vendor($|\/)/, /^\/scripts($|\/)/, /\.md$/i, /\.(b|bin|state|tmp|log)$/i, /^\/\.git($|\/)/],
   extraResource: [`${root}/build/tamogachi-core`,
-    `${root}/vendor/tamalib/LICENSE`, `${root}/THIRD_PARTY_NOTICES`],
+    `${root}/vendor/tamalib/LICENSE`],
 });
 console.log(outputs.join('\n'));
